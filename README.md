@@ -50,8 +50,7 @@ This repository acts as my digital notebook for everything related to web develo
 | **Forms Workshop** | `<label for="">`, `type="radio"` | Mastering semantic form structure and accessibility. |
 | **Layout Shifts** | `margin: -50px;`, `position` | Learning how to override default document flow. |
 | **DOM Updates** | `element.textContent`, `addEventListener` | Bridging the gap between static HTML and dynamic JS. |
-| **FastAPI** | `RESTful Routing & Pydantic Validation` | for building high-performance, asynchronous REST APIs with minimal boilerplate. |
-| **Streamlit** | `Reactive UI & Top-Down Script Execution` | Creates the interactive user interface that captures user inputs and dynamically displays the book list. |
+
 
 ---
 
