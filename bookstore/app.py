@@ -1,83 +1,68 @@
-import streamlit as st
 import requests
+import streamlit as st
 
-# Your FastAPI URL
-URL = "http://localhost:8000/books"
+URL = "http://localhost:8000"
 
 st.title("📚 Mini Bookstore")
 
+# --- LOGIN SIDEBAR ---
+st.sidebar.header("Login")
+username = st.sidebar.text_input("Username")
+password = st.sidebar.text_input("Password", type="password")
 
-st.subheader("Our Collection")
-try:
-    response = requests.get(URL)
-    if response.status_code == 200:
-        all_books = response.json()
-        for b in all_books:
-            # Using get() prevents errors if keys are missing
-            title = b.get("Title") or b.get("title")
-            author = b.get("Author") or b.get("author")
-            price = b.get("Price", 0.0)
-            
-            st.write(f"📖 **{title}** by *{author}* — ${price}")
+token = None
+if st.sidebar.button("Login"):
+    res = requests.post(f"{URL}/token", data={"username": username, "password": password})
+    if res.status_code == 200:
+        st.session_state["token"] = res.json()["access_token"]
+        st.sidebar.success("Logged in!")
     else:
-        st.write("No books found.")
+        st.sidebar.error("Wrong login info")
+
+token = st.session_state.get("token")
+headers = {"Authorization": f"Bearer {token}"} if token else {}
+
+
+# --- 1. LIST BOOKS ---
+st.subheader("📖 Books List")
+try:
+    res = requests.get(f"{URL}/books")
+    if res.status_code == 200:
+        for b in res.json():
+            st.write(f"**ID {b['id']}**: {b['title']} — *Author:* {b['author']['name']} ({'Offer!' if b['is_offer'] else 'Regular'})")
 except:
-    st.error("Error: Can't connect to the FastAPI server. Is it running?")
+    st.error("Server not connected.")
 
-
-
-st.subheader(" ➕ Add a book")
-with st.form("formulaire_ajout", clear_on_submit=True):
-    id_livre = st.number_input("ID du livre", min_value=1, value=5, step=1)
-    titre = st.text_input("Title of the book")
-    auteur = st.text_input("Author")
-    en_promotion = st.checkbox("There is an offer?")
-    
-    bouton_valider = st.form_submit_button("Add the book")
-
-    if bouton_valider:
-        if titre and auteur: 
-            nouveau_livre = {
-                "id": id_livre,
-                "title": titre,
-                "author": auteur,
-                "is_offer": en_promotion
-            }
-            
-            try:
-                response = requests.post(f"{URL}/", json=nouveau_livre)
-                
-                if response.status_code == 200:
-                    st.success(f"🎉 the book '{titre}' has been added successfully !")
-                    st.rerun()  # Rafraîchit la page automatiquement pour voir le livre dans la liste
-                else:
-                    st.error(f"Serveur error ({response.status_code}) : {response.text}")
-            except:
-                pass
-        else:
-            st.warning("Please fill in the title and author.")
 
 st.divider()
 
 
-
-st.subheader("📖 List of available books")
-try:
-    response = requests.get(URL)
+# --- 2. ADD A BOOK ---
+st.subheader("➕ Add a Book")
+with st.form("add_form", clear_on_submit=True):
+    b_id = st.number_input("Book ID", min_value=1, value=5)
+    title = st.text_input("Title")
     
-    if response.status_code == 200:
-        liste_livres = response.json()
-        
-        for livre in liste_livres:
-            display_title = livre.get("Title") or livre.get("title") or "Title not found"
-            display_author = livre.get("Author") or livre.get("author") or "Author not found"
-            promo = "🎁 (Special Offer!)" if livre.get("is_offer") else ""
-            
-            st.write(f"🆔 {livre.get('id', '?')} | **{display_title}** — *{display_author}* {promo}")
-    else:
-        st.warning("No books found.")
-
-except Exception as e:
-    st.error("❌ Error: Can't connect to the FastAPI server. Is it running?")
-
-
+    st.write("--- Author Details ---")
+    a_id = st.number_input("Author ID", min_value=1, value=5)
+    a_name = st.text_input("Author Name")
+    a_mail = st.text_input("Author Email")
+    
+    is_offer = st.checkbox("Special Offer?")
+    
+    if st.form_submit_button("Add Book"):
+        if token:
+            payload = {
+                "id": b_id,
+                "title": title,
+                "author": {"id": a_id, "name": a_name, "mail": a_mail},
+                "is_offer": is_offer
+            }
+            res = requests.post(f"{URL}/books", json=payload, headers=headers)
+            if res.status_code in [200, 201]:
+                st.success("Book added!")
+                st.rerun()
+            else:
+                st.error(res.text)
+        else:
+            st.warning("Log in first from the sidebar!")
